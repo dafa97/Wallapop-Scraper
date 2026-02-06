@@ -25,8 +25,19 @@ A Python script to scrape item listings from Wallapop.com using Selenium and und
 
 ## Usage
 
-Run the script with:
-```
+### First Time Setup
+
+1. The project uses a Python virtual environment. It will be automatically configured when you first run the script.
+
+2. Run the script:
+   ```bash
+   python main.py
+   ```
+
+### Regular Usage
+
+Simply run:
+```bash
 python main.py
 ```
 
@@ -36,8 +47,23 @@ The script will:
 - Open a browser window (positioned to the left for better monitoring)
 - Search on Wallapop
 - Scrape item data and details
-- Save CSV output to `output/` folder with timestamp (e.g., `wallapop_MacBook_M2_details_20230921_165803.csv`)
-- Save logs to `logs/` folder with timestamp (e.g., `wallapop_MacBook_M2_20230921_165803.log`)
+- Save CSV output to `output/` folder with timestamp (e.g., `wallapop_MacBook_M2_details_20260206_181301.csv`)
+- Save logs to `logs/` folder with timestamp (e.g., `wallapop_MacBook_M2_20260206_181301.log`)
+
+### Troubleshooting
+
+**"selenium: module not found" error:**
+- Ensure you're running with `python` (not `python3`)
+- The virtual environment will be created automatically
+
+**Empty titles/prices in CSV:**
+- Wallapop frequently updates their HTML structure
+- If this happens, report in the TODO.md under "Critical" section #4
+
+**Script is slow:**
+- This is normal and intentional
+- The delays are built-in to avoid detection
+- Each product page takes ~5 seconds to load completely
 
 ## CSV Output Format
 
