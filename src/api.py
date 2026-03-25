@@ -2,6 +2,8 @@ import json
 import os
 import logging
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
 
@@ -9,7 +11,14 @@ from src.database import get_items, get_item_by_id, get_stats
 
 app = FastAPI(title="Wallapop Scraper API")
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 SEARCHES_FILE = "searches.json"
+
+
+@app.get("/")
+def root():
+    return FileResponse("static/index.html")
 
 
 def _load_searches():

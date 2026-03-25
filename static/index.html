@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wallapop Scraper - Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #1a1a2e;
+      --bg-card: #16213e;
+      --accent: #0f3460;
+      --highlight: #e94560;
+      --text-primary: #e0e0e0;
+      --text-secondary: #a0a0b0;
+      --green: #4caf50;
+      --border-radius: 10px;
+      --shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+      --transition: all 0.3s ease;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, var(--bg-card), var(--accent));
+      padding: 1.5rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .header-title svg {
+      width: 32px;
+      height: 32px;
+      fill: var(--highlight);
+    }
+
+    .header-stats {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .stat-badge {
+      background: rgba(255, 255, 255, 0.08);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      backdrop-filter: blur(5px);
+    }
+
+    .stat-badge .value {
+      font-weight: 700;
+      color: var(--highlight);
+    }
+
+    /* Layout */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 900px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+      }
+    }
+
+    /* Sidebar - Búsquedas */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+      padding: 1.25rem;
+      box-shadow: var(--shadow);
+    }
+
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--highlight);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      padding-bottom: 0.5rem;
+    }
+
+    .search-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .form-group label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    input, select {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      padding: 0.6rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      transition: var(--transition);
+      font-family: inherit;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--highlight);
+      box-shadow: 0 0 0 2px rgba(233, 69, 96, 0.2);
+    }
+
+    .btn {
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: var(--transition);
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--highlight);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #d63851;
+      transform: translateY(-1px);
+    }
+
+    .btn-danger {
+      background: transparent;
+      color: var(--highlight);
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem;
+      border: 1px solid var(--highlight);
+    }
+
+    .btn-danger:hover {
+      background: var(--highlight);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .btn-secondary:hover {
+      background: #1a4a80;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .search-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .search-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6rem 0.8rem;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 8px;
+      transition: var(--transition);
+    }
+
+    .search-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .search-item-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .search-item-query {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .search-item-interval {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    /* Content area */
+    .content {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    /* Filtros */
+    .filters {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+
+    .filters .form-group {
+      flex: 1;
+      min-width: 150px;
+    }
+
+    /* Tabla */
+    .table-container {
+      overflow-x: auto;
+      border-radius: var(--border-radius);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+      overflow: hidden;
+    }
+
+    thead th {
+      background: var(--accent);
+      padding: 0.8rem 1rem;
+      text-align: left;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    tbody tr:hover {
+      background: rgba(233, 69, 96, 0.06);
+    }
+
+    td {
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      vertical-align: middle;
+    }
+
+    td a {
+      color: var(--text-primary);
+      text-decoration: none;
+      transition: var(--transition);
+    }
+
+    td a:hover {
+      color: var(--highlight);
+    }
+
+    .price {
+      color: var(--green);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .query-badge {
+      display: inline-block;
+      background: var(--accent);
+      color: var(--text-primary);
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      white-space: nowrap;
+    }
+
+    .date-cell {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      white-space: nowrap;
+    }
+
+    /* Paginación */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem;
+    }
+
+    .pagination-info {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+      backdrop-filter: blur(3px);
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--bg-card);
+      border-radius: var(--border-radius);
+      max-width: 700px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      position: relative;
+      animation: modalIn 0.3s ease;
+    }
+
+    @keyframes modalIn {
+      from { transform: scale(0.9); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 1.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    }
+
+    .modal-header h2 {
+      font-size: 1.2rem;
+      padding-right: 1rem;
+      line-height: 1.4;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0.25rem;
+      line-height: 1;
+      transition: var(--transition);
+      flex-shrink: 0;
+    }
+
+    .modal-close:hover {
+      color: var(--highlight);
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .modal-meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .meta-item {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 0.75rem;
+      border-radius: 8px;
+    }
+
+    .meta-item .meta-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+    }
+
+    .meta-item .meta-value {
+      font-weight: 600;
+      margin-top: 0.2rem;
+    }
+
+    .modal-description {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+    }
+
+    .chart-container {
+      position: relative;
+      width: 100%;
+      height: 250px;
+    }
+
+    /* Loading & Error */
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-secondary);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top-color: var(--highlight);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 0.5rem;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .error-msg {
+      background: rgba(233, 69, 96, 0.1);
+      border: 1px solid rgba(233, 69, 96, 0.3);
+      color: var(--highlight);
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-secondary);
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      fill: var(--text-secondary);
+      opacity: 0.5;
+      margin-bottom: 1rem;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--accent);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--highlight);
+    }
+
+    /* Toast notification */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      padding: 0.8rem 1.2rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      z-index: 2000;
+      animation: slideIn 0.3s ease;
+      box-shadow: var(--shadow);
+    }
+
+    .toast.success {
+      background: rgba(76, 175, 80, 0.9);
+      color: white;
+    }
+
+    .toast.error {
+      background: rgba(233, 69, 96, 0.9);
+      color: white;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-title">
+      <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      Wallapop Scraper
+    </div>
+    <div class="header-stats">
+      <div class="stat-badge">
+        Total items: <span class="value" id="stat-total">--</span>
+      </div>
+      <div class="stat-badge">
+        Búsquedas activas: <span class="value" id="stat-searches">--</span>
+      </div>
+      <div class="stat-badge">
+        Última actualización: <span class="value" id="stat-update">--</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main layout -->
+  <div class="main-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <!-- Añadir búsqueda -->
+      <div class="card">
+        <div class="card-title">Nueva búsqueda</div>
+        <form class="search-form" id="add-search-form">
+          <div class="form-group">
+            <label for="new-query">Consulta</label>
+            <input type="text" id="new-query" placeholder="Ej: iPhone 15 Pro" required>
+          </div>
+          <div class="form-group">
+            <label for="new-interval">Intervalo (minutos)</label>
+            <input type="number" id="new-interval" value="30" min="1" required>
+          </div>
+          <button type="submit" class="btn btn-primary">Añadir búsqueda</button>
+        </form>
+      </div>
+
+      <!-- Búsquedas activas -->
+      <div class="card">
+        <div class="card-title">Búsquedas activas</div>
+        <div id="searches-loading" class="loading"><span class="spinner"></span> Cargando...</div>
+        <div id="searches-error" class="error-msg" style="display:none;"></div>
+        <ul class="search-list" id="searches-list"></ul>
+        <div id="searches-empty" class="empty-state" style="display:none;">
+          <svg viewBox="0 0 24 24"><path d="M19 13H5v-2h14v2z"/></svg>
+          <p>No hay búsquedas activas</p>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Content -->
+    <main class="content">
+      <!-- Filtros -->
+      <div class="card">
+        <div class="filters">
+          <div class="form-group">
+            <label for="filter-query">Buscar</label>
+            <input type="text" id="filter-query" placeholder="Filtrar por texto...">
+          </div>
+          <div class="form-group">
+            <label for="filter-sort">Ordenar por</label>
+            <select id="filter-sort">
+              <option value="recent">Más recientes</option>
+              <option value="price_asc">Precio: menor a mayor</option>
+              <option value="price_desc">Precio: mayor a menor</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="filter-max-price">Precio máximo (€)</label>
+            <input type="number" id="filter-max-price" placeholder="Sin límite" min="0">
+          </div>
+          <div class="form-group">
+            <button class="btn btn-primary" id="btn-filter">Filtrar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="card">
+        <div id="items-loading" class="loading"><span class="spinner"></span> Cargando items...</div>
+        <div id="items-error" class="error-msg" style="display:none;"></div>
+        <div id="items-empty" class="empty-state" style="display:none;">
+          <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+          <p>No se encontraron items</p>
+        </div>
+        <div class="table-container" id="table-container" style="display:none;">
+          <table>
+            <thead>
+              <tr>
+                <th>Título</th>
+                <th>Precio</th>
+                <th>Ubicación</th>
+                <th>Query</th>
+                <th>Última vez visto</th>
+              </tr>
+            </thead>
+            <tbody id="items-tbody"></tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination" style="display:none;">
+          <button class="btn btn-secondary" id="btn-prev" disabled>Anterior</button>
+          <span class="pagination-info" id="pagination-info"></span>
+          <button class="btn btn-secondary" id="btn-next" disabled>Siguiente</button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal de detalle -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">--</h2>
+        <button class="modal-close" id="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-meta" id="modal-meta"></div>
+        <div id="modal-description-section">
+          <div class="card-title">Descripción</div>
+          <div class="modal-description" id="modal-description">--</div>
+        </div>
+        <div id="modal-chart-section">
+          <div class="card-title">Historial de precios</div>
+          <div class="chart-container">
+            <canvas id="price-chart"></canvas>
+          </div>
+        </div>
+        <div id="modal-loading" class="loading" style="display:none;"><span class="spinner"></span> Cargando detalle...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========== Estado global ==========
+    const state = {
+      items: [],
+      currentOffset: 0,
+      limit: 20,
+      totalItems: 0,
+      priceChart: null
+    };
+
+    // ========== Utilidades ==========
+    function formatDate(dateStr) {
+      if (!dateStr) return '--';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return d.toLocaleDateString('es-ES', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    }
+
+    function formatPrice(price) {
+      if (price == null) return '--';
+      return Number(price).toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }) + ' €';
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function showToast(message, type = 'success') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    async function apiFetch(url, options = {}) {
+      const res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`Error ${res.status}: ${text || res.statusText}`);
+      }
+      if (res.status === 204) return null;
+      return res.json();
+    }
+
+    // ========== Stats ==========
+    async function loadStats() {
+      try {
+        const data = await apiFetch('/api/stats');
+        document.getElementById('stat-total').textContent = data.total_items ?? '--';
+        document.getElementById('stat-searches').textContent = data.unique_queries ?? '--';
+        document.getElementById('stat-update').textContent = formatDate(data.last_update);
+        state.totalItems = data.total_items || 0;
+      } catch (e) {
+        console.error('Error cargando stats:', e);
+      }
+    }
+
+    // ========== Búsquedas ==========
+    async function loadSearches() {
+      const loading = document.getElementById('searches-loading');
+      const errorEl = document.getElementById('searches-error');
+      const list = document.getElementById('searches-list');
+      const empty = document.getElementById('searches-empty');
+
+      loading.style.display = '';
+      errorEl.style.display = 'none';
+      list.innerHTML = '';
+      empty.style.display = 'none';
+
+      try {
+        const searches = await apiFetch('/api/searches');
+        loading.style.display = 'none';
+
+        if (!searches || searches.length === 0) {
+          empty.style.display = '';
+          return;
+        }
+
+        searches.forEach(s => {
+          const li = document.createElement('li');
+          li.className = 'search-item';
+          li.innerHTML = `
+            <div class="search-item-info">
+              <span class="search-item-query">${escapeHtml(s.query)}</span>
+              <span class="search-item-interval">Cada ${s.interval_minutes} min</span>
+            </div>
+            <button class="btn btn-danger" data-query="${escapeHtml(s.query)}">Eliminar</button>
+          `;
+          li.querySelector('.btn-danger').addEventListener('click', () => deleteSearch(s.query));
+          list.appendChild(li);
+        });
+      } catch (e) {
+        loading.style.display = 'none';
+        errorEl.textContent = 'Error al cargar búsquedas: ' + e.message;
+        errorEl.style.display = '';
+      }
+    }
+
+    async function addSearch(query, intervalMinutes) {
+      try {
+        await apiFetch('/api/searches', {
+          method: 'POST',
+          body: JSON.stringify({ query, interval_minutes: intervalMinutes })
+        });
+        showToast(`Búsqueda "${query}" añadida`);
+        loadSearches();
+        loadStats();
+      } catch (e) {
+        showToast('Error al añadir búsqueda: ' + e.message, 'error');
+      }
+    }
+
+    async function deleteSearch(query) {
+      if (!confirm(`¿Eliminar la búsqueda "${query}"?`)) return;
+      try {
+        await apiFetch(`/api/searches/${encodeURIComponent(query)}`, { method: 'DELETE' });
+        showToast(`Búsqueda "${query}" eliminada`);
+        loadSearches();
+        loadStats();
+      } catch (e) {
+        showToast('Error al eliminar: ' + e.message, 'error');
+      }
+    }
+
+    // ========== Items ==========
+    async function loadItems() {
+      const loading = document.getElementById('items-loading');
+      const errorEl = document.getElementById('items-error');
+      const tableContainer = document.getElementById('table-container');
+      const tbody = document.getElementById('items-tbody');
+      const empty = document.getElementById('items-empty');
+      const pagination = document.getElementById('pagination');
+
+      loading.style.display = '';
+      errorEl.style.display = 'none';
+      tableContainer.style.display = 'none';
+      empty.style.display = 'none';
+      pagination.style.display = 'none';
+
+      const query = document.getElementById('filter-query').value.trim();
+      const sort = document.getElementById('filter-sort').value;
+      const maxPrice = document.getElementById('filter-max-price').value;
+
+      let url = `/api/items?limit=${state.limit}&offset=${state.currentOffset}&sort=${sort}`;
+      if (query) url += `&query=${encodeURIComponent(query)}`;
+      if (maxPrice) url += `&max_price=${encodeURIComponent(maxPrice)}`;
+
+      try {
+        const items = await apiFetch(url);
+        loading.style.display = 'none';
+
+        state.items = items || [];
+
+        if (state.items.length === 0) {
+          empty.style.display = '';
+          return;
+        }
+
+        tbody.innerHTML = '';
+        state.items.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.addEventListener('click', () => openDetail(item.id));
+
+          const titleLink = item.wallapop_url
+            ? `<a href="${escapeHtml(item.wallapop_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escapeHtml(item.title || 'Sin título')}</a>`
+            : escapeHtml(item.title || 'Sin título');
+
+          tr.innerHTML = `
+            <td>${titleLink}</td>
+            <td class="price">${formatPrice(item.price)}</td>
+            <td>${escapeHtml(item.location || '--')}</td>
+            <td><span class="query-badge">${escapeHtml(item.query || '--')}</span></td>
+            <td class="date-cell">${formatDate(item.last_seen || item.updated_at || item.created_at)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        tableContainer.style.display = '';
+
+        // Paginación
+        const paginationInfo = document.getElementById('pagination-info');
+        const start = state.currentOffset + 1;
+        const end = state.currentOffset + state.items.length;
+        paginationInfo.textContent = `Mostrando ${start} - ${end}`;
+
+        document.getElementById('btn-prev').disabled = state.currentOffset === 0;
+        document.getElementById('btn-next').disabled = state.items.length < state.limit;
+        pagination.style.display = 'flex';
+
+      } catch (e) {
+        loading.style.display = 'none';
+        errorEl.textContent = 'Error al cargar items: ' + e.message;
+        errorEl.style.display = '';
+      }
+    }
+
+    // ========== Detalle / Modal ==========
+    async function openDetail(itemId) {
+      const overlay = document.getElementById('modal-overlay');
+      const modalLoading = document.getElementById('modal-loading');
+      const title = document.getElementById('modal-title');
+      const meta = document.getElementById('modal-meta');
+      const desc = document.getElementById('modal-description');
+      const descSection = document.getElementById('modal-description-section');
+      const chartSection = document.getElementById('modal-chart-section');
+
+      overlay.classList.add('active');
+      title.textContent = 'Cargando...';
+      meta.innerHTML = '';
+      desc.textContent = '';
+      descSection.style.display = 'none';
+      chartSection.style.display = 'none';
+      modalLoading.style.display = '';
+
+      // Destruir gráfica anterior
+      if (state.priceChart) {
+        state.priceChart.destroy();
+        state.priceChart = null;
+      }
+
+      try {
+        const item = await apiFetch(`/api/items/${encodeURIComponent(itemId)}`);
+        modalLoading.style.display = 'none';
+
+        title.textContent = item.title || 'Sin título';
+
+        meta.innerHTML = `
+          <div class="meta-item">
+            <div class="meta-label">Precio</div>
+            <div class="meta-value price">${formatPrice(item.price)}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Ubicación</div>
+            <div class="meta-value">${escapeHtml(item.location || '--')}</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Query</div>
+            <div class="meta-value"><span class="query-badge">${escapeHtml(item.query || '--')}</span></div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Última vez visto</div>
+            <div class="meta-value">${formatDate(item.last_seen || item.updated_at)}</div>
+          </div>
+        `;
+
+        if (item.wallapop_url) {
+          meta.innerHTML += `
+            <div class="meta-item" style="grid-column: 1 / -1;">
+              <div class="meta-label">Enlace</div>
+              <div class="meta-value"><a href="${escapeHtml(item.wallapop_url)}" target="_blank" rel="noopener" style="color: var(--highlight);">Ver en Wallapop</a></div>
+            </div>
+          `;
+        }
+
+        // Descripción
+        if (item.description) {
+          desc.textContent = item.description;
+          descSection.style.display = '';
+        }
+
+        // Gráfica de historial de precios
+        if (item.price_history && item.price_history.length > 0) {
+          chartSection.style.display = '';
+          const ctx = document.getElementById('price-chart').getContext('2d');
+          const labels = item.price_history.map(p => formatDate(p.date));
+          const data = item.price_history.map(p => p.price);
+
+          state.priceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [{
+                label: 'Precio (€)',
+                data,
+                borderColor: '#e94560',
+                backgroundColor: 'rgba(233, 69, 96, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointBackgroundColor: '#e94560',
+                pointRadius: 4,
+                pointHoverRadius: 6
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  labels: { color: '#a0a0b0' }
+                }
+              },
+              scales: {
+                x: {
+                  ticks: { color: '#a0a0b0', maxRotation: 45 },
+                  grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                y: {
+                  ticks: {
+                    color: '#a0a0b0',
+                    callback: v => v + ' €'
+                  },
+                  grid: { color: 'rgba(255,255,255,0.05)' }
+                }
+              }
+            }
+          });
+        }
+
+      } catch (e) {
+        modalLoading.style.display = 'none';
+        title.textContent = 'Error';
+        meta.innerHTML = `<div class="error-msg">No se pudo cargar el detalle: ${escapeHtml(e.message)}</div>`;
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.remove('active');
+      if (state.priceChart) {
+        state.priceChart.destroy();
+        state.priceChart = null;
+      }
+    }
+
+    // ========== Event listeners ==========
+    document.getElementById('add-search-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const query = document.getElementById('new-query').value.trim();
+      const interval = parseInt(document.getElementById('new-interval').value, 10);
+      if (!query || !interval || interval < 1) return;
+      addSearch(query, interval);
+      document.getElementById('new-query').value = '';
+    });
+
+    document.getElementById('btn-filter').addEventListener('click', () => {
+      state.currentOffset = 0;
+      loadItems();
+    });
+
+    // Filtrar al pulsar Enter en el campo de búsqueda
+    document.getElementById('filter-query').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        state.currentOffset = 0;
+        loadItems();
+      }
+    });
+
+    document.getElementById('btn-prev').addEventListener('click', () => {
+      state.currentOffset = Math.max(0, state.currentOffset - state.limit);
+      loadItems();
+    });
+
+    document.getElementById('btn-next').addEventListener('click', () => {
+      state.currentOffset += state.limit;
+      loadItems();
+    });
+
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+    document.getElementById('modal-overlay').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeModal();
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    // ========== Inicialización ==========
+    loadStats();
+    loadSearches();
+    loadItems();
+
+    // Auto-refresh stats cada 60 segundos
+    setInterval(loadStats, 60000);
+  </script>
+</body>
+</html>
