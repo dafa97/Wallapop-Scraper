@@ -190,6 +190,54 @@ def get_item_by_id(item_id):
     return dict(row) if row else None
 
 
+def get_opportunities(query=None, min_discount=0, limit=50, offset=0):
+    """Obtiene items con precio por debajo del promedio de su query.
+
+    Args:
+        query: filtro por query específica
+        min_discount: porcentaje mínimo de descuento respecto al promedio (0-100)
+        limit: máximo de resultados
+        offset: paginación
+
+    Returns:
+        dict con items (incluye avg_price y discount_pct) y total
+    """
+    conn = get_connection()
+
+    sql = """
+        SELECT i.*, q.avg_price, q.item_count,
+               ROUND((1 - i.price / q.avg_price) * 100, 1) AS discount_pct
+        FROM items i
+        JOIN (
+            SELECT query, AVG(price) AS avg_price, COUNT(*) AS item_count
+            FROM items
+            WHERE price IS NOT NULL AND price > 0
+            GROUP BY query
+            HAVING COUNT(*) >= 3
+        ) q ON i.query = q.query
+        WHERE i.price IS NOT NULL
+          AND i.price > 0
+          AND i.price < q.avg_price
+          AND ((1 - i.price / q.avg_price) * 100) >= ?
+    """
+    params = [min_discount]
+
+    if query:
+        sql += " AND i.query = ?"
+        params.append(query)
+
+    count_sql = f"SELECT COUNT(*) FROM ({sql})"
+    total = conn.execute(count_sql, params).fetchone()[0]
+
+    sql += " ORDER BY discount_pct DESC"
+    sql += " LIMIT ? OFFSET ?"
+    params.extend([limit, offset])
+
+    rows = conn.execute(sql, params).fetchall()
+    conn.close()
+    return {"items": [dict(row) for row in rows], "total": total}
+
+
 def get_stats():
     """Resumen general de la DB."""
     conn = get_connection()

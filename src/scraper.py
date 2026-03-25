@@ -10,6 +10,8 @@ from src.pages import HomePage, SearchResultsPage, ItemDetailPage
 
 
 class WallapopScraper:
+    BATCH_SIZE = 25  # Reiniciar driver cada N items para evitar memory leaks
+
     def __init__(self, headless=False):
         self.driver = None
         self.config = Config
@@ -28,12 +30,68 @@ class WallapopScraper:
                 self.driver.quit()
             except:
                 pass
+            self.driver = None
+
+    def _is_driver_alive(self):
+        """Verifica si el driver/Chrome sigue respondiendo."""
+        try:
+            self.driver.execute_script("return 1")
+            return True
+        except Exception:
+            return False
+
+    def _restart_driver(self):
+        """Reinicia el driver cuando Chrome se ha caído."""
+        logging.warning("Driver no responde. Reiniciando Chrome...")
+        self.cleanup()
+        time.sleep(2)
+        self.driver = init_driver(headless=self.headless, pos="izquierda")
+        logging.info("Driver reiniciado correctamente.")
 
     def anti_detection_delay(self):
         """Pausa aleatoria entre requests como medida anti-detección."""
         delay = random.uniform(2.5, 5.0)
         logging.info(f"Anti-detección: esperando {delay:.1f}s...")
         time.sleep(delay)
+
+    def _enrich_items_with_recovery(self, items, timeout):
+        """Enriquece items con detalle, reiniciando el driver si se cae."""
+        detail = ItemDetailPage(self.driver, timeout)
+        full_items = []
+        consecutive_failures = 0
+        max_consecutive_failures = 3
+
+        for i, item in enumerate(items):
+            # Reiniciar driver cada BATCH_SIZE items para liberar memoria
+            if i > 0 and i % self.BATCH_SIZE == 0:
+                logging.info(f"Reiniciando driver (batch {i // self.BATCH_SIZE})...")
+                self._restart_driver()
+                detail = ItemDetailPage(self.driver, timeout)
+
+            # Verificar que el driver sigue vivo antes de navegar
+            if not self._is_driver_alive():
+                self._restart_driver()
+                detail = ItemDetailPage(self.driver, timeout)
+                consecutive_failures = 0
+
+            enriched = detail.enrich_item(item)
+            full_items.append(enriched)
+
+            # Detectar si el enrich falló (el item vuelve sin cambios)
+            if enriched.get('description') in [None, 'No disponible', 'pending']:
+                consecutive_failures += 1
+                if consecutive_failures >= max_consecutive_failures:
+                    logging.warning(f"{consecutive_failures} fallos consecutivos. Reiniciando driver...")
+                    self._restart_driver()
+                    detail = ItemDetailPage(self.driver, timeout)
+                    consecutive_failures = 0
+            else:
+                consecutive_failures = 0
+
+            if i < len(items) - 1:
+                self.anti_detection_delay()
+
+        return full_items
 
     def run(self, query, max_items=None):
         try:
@@ -60,13 +118,8 @@ class WallapopScraper:
 
             logging.info(f"Procesando detalles para {len(items)} items...")
 
-            # ── Detalle: enriquecer cada item ───────────────
-            detail = ItemDetailPage(self.driver, timeout)
-            full_items = []
-            for i, item in enumerate(items):
-                full_items.append(detail.enrich_item(item))
-                if i < len(items) - 1:
-                    self.anti_detection_delay()
+            # ── Detalle: enriquecer cada item con recuperación ─
+            full_items = self._enrich_items_with_recovery(items, timeout)
 
             # ── Guardar en DB ─────────────────────────────────
             save_items_to_db(full_items, query)

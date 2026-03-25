@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
 
-from src.database import get_items, get_item_by_id, get_stats
+from src.database import get_items, get_item_by_id, get_stats, get_opportunities
 from src.scraper import WallapopScraper
 
 app = FastAPI(title="Wallapop Scraper API")
@@ -162,6 +162,21 @@ def force_scrape(req: ScrapeRequest):
 def scrape_status():
     """Ver qué scrapes están en curso."""
     return {"active": [q for q, running in _active_scrapes.items() if running]}
+
+
+@app.get("/api/opportunities")
+def list_opportunities(
+    query: Optional[str] = Query(None, description="Filtrar por query exacta"),
+    min_discount: float = Query(0, ge=0, le=100, description="Descuento mínimo (%)"),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    """Items por debajo del precio promedio de su categoría de búsqueda."""
+    result = get_opportunities(query=query, min_discount=min_discount, limit=limit, offset=offset)
+    return {
+        "items": [_parse_price_history(item) for item in result["items"]],
+        "total": result["total"]
+    }
 
 
 @app.get("/api/stats")

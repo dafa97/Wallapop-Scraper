@@ -526,6 +526,86 @@
       margin-bottom: 1rem;
     }
 
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 0;
+    }
+
+    .tab-btn {
+      padding: 0.7rem 1.5rem;
+      border: none;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      font-family: inherit;
+      transition: var(--transition);
+      border-bottom: 2px solid transparent;
+    }
+
+    .tab-btn:first-child {
+      border-radius: var(--border-radius) 0 0 0;
+    }
+
+    .tab-btn:last-child {
+      border-radius: 0 var(--border-radius) 0 0;
+    }
+
+    .tab-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+    }
+
+    .tab-btn.active {
+      background: var(--bg-card);
+      color: var(--highlight);
+      border-bottom-color: var(--highlight);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Opportunity specific */
+    .discount-badge {
+      display: inline-block;
+      background: rgba(76, 175, 80, 0.15);
+      color: var(--green);
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+
+    .avg-price {
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      text-decoration: line-through;
+    }
+
+    .opp-filters {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      padding: 1.25rem;
+      background: var(--bg-card);
+      border-radius: 0 0 var(--border-radius) var(--border-radius);
+      margin-bottom: 1rem;
+    }
+
+    .opp-filters .form-group {
+      flex: 1;
+      min-width: 150px;
+    }
+
     /* Scrollbar */
     ::-webkit-scrollbar {
       width: 8px;
@@ -630,6 +710,14 @@
 
     <!-- Content -->
     <main class="content">
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="items-tab">Items</button>
+        <button class="tab-btn" data-tab="opportunities-tab">Oportunidades</button>
+      </div>
+
+      <!-- Tab: Items -->
+      <div class="tab-content active" id="items-tab">
       <!-- Filtros -->
       <div class="card">
         <div class="filters">
@@ -683,6 +771,56 @@
           <button class="btn btn-secondary" id="btn-next" disabled>Siguiente</button>
         </div>
       </div>
+      </div><!-- end items-tab -->
+
+      <!-- Tab: Oportunidades -->
+      <div class="tab-content" id="opportunities-tab">
+        <div class="opp-filters">
+          <div class="form-group">
+            <label for="opp-query">Búsqueda</label>
+            <select id="opp-query">
+              <option value="">Todas las búsquedas</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="opp-min-discount">Descuento mínimo (%)</label>
+            <input type="number" id="opp-min-discount" value="10" min="0" max="100">
+          </div>
+          <div class="form-group">
+            <button class="btn btn-primary" id="btn-opp-filter">Filtrar</button>
+          </div>
+        </div>
+        <div class="card">
+          <div id="opp-loading" class="loading"><span class="spinner"></span> Buscando oportunidades...</div>
+          <div id="opp-error" class="error-msg" style="display:none;"></div>
+          <div id="opp-empty" class="empty-state" style="display:none;">
+            <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
+            <p>No se encontraron oportunidades</p>
+            <p style="font-size:0.8rem;margin-top:0.5rem;">Se necesitan al menos 3 items por búsqueda para calcular promedios</p>
+          </div>
+          <div class="table-container" id="opp-table-container" style="display:none;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th>Precio</th>
+                  <th>Precio Promedio</th>
+                  <th>Descuento</th>
+                  <th>Búsqueda</th>
+                  <th>Ubicación</th>
+                </tr>
+              </thead>
+              <tbody id="opp-tbody"></tbody>
+            </table>
+          </div>
+          <div class="pagination" id="opp-pagination" style="display:none;">
+            <button class="btn btn-secondary" id="btn-opp-prev" disabled>Anterior</button>
+            <span class="pagination-info" id="opp-pagination-info"></span>
+            <button class="btn btn-secondary" id="btn-opp-next" disabled>Siguiente</button>
+          </div>
+        </div>
+      </div><!-- end opportunities-tab -->
+
     </main>
   </div>
 
@@ -1067,6 +1205,118 @@
       }
     }
 
+    // ========== Oportunidades ==========
+    const oppState = {
+      currentOffset: 0,
+      limit: 20,
+      total: 0
+    };
+
+    async function loadOpportunities() {
+      const loading = document.getElementById('opp-loading');
+      const errorEl = document.getElementById('opp-error');
+      const tableContainer = document.getElementById('opp-table-container');
+      const tbody = document.getElementById('opp-tbody');
+      const empty = document.getElementById('opp-empty');
+      const pagination = document.getElementById('opp-pagination');
+
+      loading.style.display = '';
+      errorEl.style.display = 'none';
+      tableContainer.style.display = 'none';
+      empty.style.display = 'none';
+      pagination.style.display = 'none';
+
+      const query = document.getElementById('opp-query').value;
+      const minDiscount = document.getElementById('opp-min-discount').value || 0;
+
+      let url = `/api/opportunities?limit=${oppState.limit}&offset=${oppState.currentOffset}&min_discount=${minDiscount}`;
+      if (query) url += `&query=${encodeURIComponent(query)}`;
+
+      try {
+        const result = await apiFetch(url);
+        loading.style.display = 'none';
+
+        oppState.total = result.total || 0;
+        const items = result.items || [];
+
+        if (items.length === 0) {
+          empty.style.display = '';
+          return;
+        }
+
+        tbody.innerHTML = '';
+        items.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.addEventListener('click', () => openDetail(item.id));
+
+          const titleLink = item.wallapop_url
+            ? `<a href="${escapeHtml(item.wallapop_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${escapeHtml(item.title || 'Sin título')}</a>`
+            : escapeHtml(item.title || 'Sin título');
+
+          tr.innerHTML = `
+            <td>${titleLink}</td>
+            <td class="price">${formatPrice(item.price)}</td>
+            <td class="avg-price">${formatPrice(item.avg_price)}</td>
+            <td><span class="discount-badge">-${item.discount_pct}%</span></td>
+            <td><span class="query-badge">${escapeHtml(item.query || '--')}</span></td>
+            <td>${escapeHtml(item.location || '--')}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        tableContainer.style.display = '';
+
+        const paginationInfo = document.getElementById('opp-pagination-info');
+        const start = oppState.currentOffset + 1;
+        const end = oppState.currentOffset + items.length;
+        paginationInfo.textContent = `Mostrando ${start} - ${end} de ${oppState.total} oportunidades`;
+
+        document.getElementById('btn-opp-prev').disabled = oppState.currentOffset === 0;
+        document.getElementById('btn-opp-next').disabled = (oppState.currentOffset + items.length) >= oppState.total;
+        pagination.style.display = 'flex';
+
+      } catch (e) {
+        loading.style.display = 'none';
+        errorEl.textContent = 'Error al cargar oportunidades: ' + e.message;
+        errorEl.style.display = '';
+      }
+    }
+
+    async function loadOppQueryOptions() {
+      try {
+        const data = await apiFetch('/api/stats');
+        const select = document.getElementById('opp-query');
+        // Mantener la primera opción "Todas"
+        select.innerHTML = '<option value="">Todas las búsquedas</option>';
+        if (data.queries) {
+          data.queries.forEach(q => {
+            const opt = document.createElement('option');
+            opt.value = q.query;
+            opt.textContent = `${q.query} (${q.count})`;
+            select.appendChild(opt);
+          });
+        }
+      } catch (e) {
+        console.error('Error cargando queries para oportunidades:', e);
+      }
+    }
+
+    // ========== Tabs ==========
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+
+        if (btn.dataset.tab === 'opportunities-tab') {
+          loadOppQueryOptions();
+          oppState.currentOffset = 0;
+          loadOpportunities();
+        }
+      });
+    });
+
     // ========== Event listeners ==========
     document.getElementById('add-search-form').addEventListener('submit', e => {
       e.preventDefault();
@@ -1107,6 +1357,22 @@
     });
     document.addEventListener('keydown', e => {
       if (e.key === 'Escape') closeModal();
+    });
+
+    // Oportunidades listeners
+    document.getElementById('btn-opp-filter').addEventListener('click', () => {
+      oppState.currentOffset = 0;
+      loadOpportunities();
+    });
+
+    document.getElementById('btn-opp-prev').addEventListener('click', () => {
+      oppState.currentOffset = Math.max(0, oppState.currentOffset - oppState.limit);
+      loadOpportunities();
+    });
+
+    document.getElementById('btn-opp-next').addEventListener('click', () => {
+      oppState.currentOffset += oppState.limit;
+      loadOpportunities();
     });
 
     // ========== Inicialización ==========
