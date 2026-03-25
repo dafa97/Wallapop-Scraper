@@ -1,6 +1,22 @@
 import undetected_chromedriver as uc
 import os
+import re
 import shutil
+import subprocess
+
+
+def _detect_chrome_version():
+    """Detecta la versión major de Chrome instalada."""
+    for cmd in ["google-chrome --version", "google-chrome-stable --version", "chromium --version"]:
+        try:
+            output = subprocess.check_output(cmd.split(), stderr=subprocess.DEVNULL).decode()
+            match = re.search(r'(\d+)\.', output)
+            if match:
+                return int(match.group(1))
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            continue
+    return None
+
 
 def init_driver(headless=False, pos="max"):
     """
@@ -31,6 +47,7 @@ def init_driver(headless=False, pos="max"):
             options=options,
             headless=headless,
             log_level=3,
+            version_main=_detect_chrome_version(),
             use_subprocess=True
         )
     except Exception as e:
@@ -38,7 +55,7 @@ def init_driver(headless=False, pos="max"):
         cache_path = os.path.join(os.getenv('APPDATA') or os.path.expanduser('~'), 'undetected_chromedriver')
         if os.path.exists(cache_path):
             shutil.rmtree(cache_path, ignore_errors=True)
-            
+
         # Reintentar con nuevas opciones
         options = uc.ChromeOptions()
         options.add_argument("--password-store=basic")
@@ -46,6 +63,7 @@ def init_driver(headless=False, pos="max"):
             options=options,
             headless=headless,
             log_level=3,
+            version_main=_detect_chrome_version(),
             use_subprocess=True
         )
     
