@@ -18,7 +18,7 @@ coverage.xml
 *.cover
 .hypothesis/
 .pytest_cache/
-
+html_capturas/
 # Chromedriver
 chromedriver.exe
 chromedriver-win64/

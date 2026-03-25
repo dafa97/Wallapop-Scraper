@@ -21,7 +21,7 @@ def init_driver(headless=False, pos="max"):
             options=options, 
             headless=headless,
             log_level=3,
-            version_main=144, # Versión fija según tu config original
+            version_main=146, # Versión fija según tu config original
             use_subprocess=True
         )
     except Exception as e:
@@ -37,7 +37,7 @@ def init_driver(headless=False, pos="max"):
             options=options, 
             headless=headless,
             log_level=3,
-            version_main=144,
+            version_main=146,
             use_subprocess=True
         )
     
