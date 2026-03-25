@@ -27,7 +27,7 @@ class SearchResultsPage(BasePage):
     CARD_LOCATION_PATTERN = ["location", "distance"]
 
     # Configuración de scroll
-    SCROLL_PAUSE = 3        # Segundos de espera tras cada scroll
+    SCROLL_PAUSE = 5        # Segundos de espera tras cada scroll
     MAX_SCROLL_RETRIES = 3  # Scrolls consecutivos sin nuevos items antes de parar
 
     def _scroll_to_load_all(self, max_items=None):
