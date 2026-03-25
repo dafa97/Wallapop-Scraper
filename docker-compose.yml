@@ -2,6 +2,7 @@ services:
   wallapop-scraper:
     build: .
     container_name: wallapop-scraper
+    shm_size: "2g"
     ports:
       - "8000:8000"
     volumes:

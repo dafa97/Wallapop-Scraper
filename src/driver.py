@@ -21,6 +21,10 @@ def init_driver(headless=False, pos="max"):
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-background-networking")
+        options.add_argument("--single-process")
+        options.add_argument("--remote-debugging-port=0")
 
     try:
         driver = uc.Chrome(
@@ -32,7 +36,7 @@ def init_driver(headless=False, pos="max"):
         )
     except Exception as e:
         print(f"Error inicializando driver: {e}. Intentando limpiar caché...")
-        cache_path = os.path.join(os.getenv('APPDATA'), 'undetected_chromedriver')
+        cache_path = os.path.join(os.getenv('APPDATA') or os.path.expanduser('~'), 'undetected_chromedriver')
         if os.path.exists(cache_path):
             shutil.rmtree(cache_path, ignore_errors=True)
             
