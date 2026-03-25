@@ -22,16 +22,15 @@ def init_driver(headless=False, pos="max"):
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1920,1080")
         options.add_argument("--disable-extensions")
-        options.add_argument("--disable-background-networking")
-        options.add_argument("--single-process")
-        options.add_argument("--remote-debugging-port=0")
+        options.add_argument("--disable-setuid-sandbox")
+        options.add_argument("--no-first-run")
+        options.add_argument("--no-zygote")
 
     try:
         driver = uc.Chrome(
-            options=options, 
+            options=options,
             headless=headless,
             log_level=3,
-            version_main=146, # Versión fija según tu config original
             use_subprocess=True
         )
     except Exception as e:
@@ -44,10 +43,9 @@ def init_driver(headless=False, pos="max"):
         options = uc.ChromeOptions()
         options.add_argument("--password-store=basic")
         driver = uc.Chrome(
-            options=options, 
+            options=options,
             headless=headless,
             log_level=3,
-            version_main=146,
             use_subprocess=True
         )
     
