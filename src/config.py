@@ -8,4 +8,4 @@ class Config:
     OUTPUT_DIR = "output"
 
     # Límites
-    MAX_ITEMS = 3  # Máximo número de elementos a scrapear (None para todos)
+    MAX_ITEMS = None  # Máximo número de elementos a scrapear (None para todos)

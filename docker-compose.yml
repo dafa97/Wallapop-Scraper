@@ -1,0 +1,11 @@
+services:
+  wallapop-scraper:
+    build: .
+    container_name: wallapop-scraper
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./searches.json:/app/searches.json
+    restart: always

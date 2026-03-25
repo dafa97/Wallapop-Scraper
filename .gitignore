@@ -23,8 +23,9 @@ html_capturas/
 chromedriver.exe
 chromedriver-win64/
 
-# Output and logs
+# Output, data and logs
 output/
+data/
 logs/
 *.log
 

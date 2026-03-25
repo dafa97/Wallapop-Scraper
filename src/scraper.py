@@ -5,20 +5,22 @@ import random
 from src.config import Config
 from src.driver import init_driver
 from src.utils import setup_logging, save_to_csv
+from src.database import save_items_to_db
 from src.pages import HomePage, SearchResultsPage, ItemDetailPage
 
 
 class WallapopScraper:
-    def __init__(self):
+    def __init__(self, headless=False):
         self.driver = None
         self.config = Config
         self.timestamp = None
+        self.headless = headless
 
     def initialize(self, query):
         """Configuración inicial: logging y driver."""
         self.timestamp = setup_logging(query, self.config.LOG_DIR)
         logging.info("Inicializando driver...")
-        self.driver = init_driver(headless=False, pos="izquierda")
+        self.driver = init_driver(headless=self.headless, pos="izquierda")
 
     def cleanup(self):
         if self.driver:
@@ -54,10 +56,7 @@ class WallapopScraper:
 
             # ── Resultados: extraer cards ───────────────────
             results = SearchResultsPage(self.driver, timeout)
-            items = results.extract_items()
-
-            if max_items:
-                items = items[:max_items]
+            items = results.extract_items(max_items=max_items)
 
             logging.info(f"Procesando detalles para {len(items)} items...")
 
@@ -69,7 +68,10 @@ class WallapopScraper:
                 if i < len(items) - 1:
                     self.anti_detection_delay()
 
-            # ── Guardar CSV ─────────────────────────────────
+            # ── Guardar en DB ─────────────────────────────────
+            save_items_to_db(full_items, query)
+
+            # ── Guardar CSV (backup) ──────────────────────────
             filename = f"wallapop_{query.replace(' ', '_')}_detalles_{self.timestamp}.csv"
             save_to_csv(full_items, filename, self.config.OUTPUT_DIR)
 

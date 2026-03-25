@@ -9,13 +9,19 @@ def init_driver(headless=False, pos="max"):
     options = uc.ChromeOptions()
     options.add_argument("--password-store=basic")
     options.add_experimental_option(
-        "prefs", 
+        "prefs",
         {
             "credentials_enable_service": False,
             "profile.password_manager_enabled": False
         },
     )
-    
+
+    if headless:
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
+
     try:
         driver = uc.Chrome(
             options=options, 
