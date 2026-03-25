@@ -164,6 +164,10 @@ def get_items(query=None, sort="recent", max_price=None, limit=50, offset=0):
         sql += " AND price <= ?"
         params.append(max_price)
 
+    # Contar total antes de paginar
+    count_sql = sql.replace("SELECT *", "SELECT COUNT(*)", 1)
+    total = conn.execute(count_sql, params).fetchone()[0]
+
     order_map = {
         "price_asc": "price ASC",
         "price_desc": "price DESC",
@@ -175,7 +179,7 @@ def get_items(query=None, sort="recent", max_price=None, limit=50, offset=0):
 
     rows = conn.execute(sql, params).fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    return {"items": [dict(row) for row in rows], "total": total}
 
 
 def get_item_by_id(item_id):

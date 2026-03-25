@@ -891,10 +891,11 @@
       if (maxPrice) url += `&max_price=${encodeURIComponent(maxPrice)}`;
 
       try {
-        const items = await apiFetch(url);
+        const result = await apiFetch(url);
         loading.style.display = 'none';
 
-        state.items = items || [];
+        state.items = result.items || [];
+        state.total = result.total || 0;
 
         if (state.items.length === 0) {
           empty.style.display = '';
@@ -926,10 +927,10 @@
         const paginationInfo = document.getElementById('pagination-info');
         const start = state.currentOffset + 1;
         const end = state.currentOffset + state.items.length;
-        paginationInfo.textContent = `Mostrando ${start} - ${end}`;
+        paginationInfo.textContent = `Mostrando ${start} - ${end} de ${state.total} items`;
 
         document.getElementById('btn-prev').disabled = state.currentOffset === 0;
-        document.getElementById('btn-next').disabled = state.items.length < state.limit;
+        document.getElementById('btn-next').disabled = (state.currentOffset + state.items.length) >= state.total;
         pagination.style.display = 'flex';
 
       } catch (e) {

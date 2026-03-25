@@ -79,8 +79,11 @@ def list_items(
     offset: int = Query(0, ge=0),
 ):
     """Listar items con filtros opcionales."""
-    items = get_items(query=query, sort=sort, max_price=max_price, limit=limit, offset=offset)
-    return [_parse_price_history(item) for item in items]
+    result = get_items(query=query, sort=sort, max_price=max_price, limit=limit, offset=offset)
+    return {
+        "items": [_parse_price_history(item) for item in result["items"]],
+        "total": result["total"]
+    }
 
 
 @app.get("/api/items/{item_id}")
