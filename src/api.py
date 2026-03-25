@@ -1,6 +1,7 @@
 import json
 import os
 import logging
+import threading
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -8,6 +9,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from src.database import get_items, get_item_by_id, get_stats
+from src.scraper import WallapopScraper
 
 app = FastAPI(title="Wallapop Scraper API")
 
@@ -55,6 +57,15 @@ def _parse_price_history(item):
 class SearchCreate(BaseModel):
     query: str
     interval_minutes: int = 60
+
+
+class ScrapeRequest(BaseModel):
+    query: str
+    max_items: Optional[int] = None
+
+
+# Track de scrapes en curso
+_active_scrapes: dict[str, bool] = {}
 
 
 # --- Endpoints ---
@@ -118,6 +129,36 @@ def delete_search(query: str):
 
     _save_searches(data)
     return {"message": "Búsqueda eliminada", "query": query}
+
+
+@app.post("/api/scrape")
+def force_scrape(req: ScrapeRequest):
+    """Forzar un scrape inmediato en background."""
+    query = req.query.strip()
+    if not query:
+        raise HTTPException(status_code=400, detail="Query vacía")
+
+    if _active_scrapes.get(query):
+        raise HTTPException(status_code=409, detail=f"Ya hay un scrape en curso para '{query}'")
+
+    def _run():
+        _active_scrapes[query] = True
+        try:
+            scraper = WallapopScraper(headless=True)
+            scraper.run(query, max_items=req.max_items)
+        except Exception as e:
+            logging.error(f"Error en scrape forzado '{query}': {e}")
+        finally:
+            _active_scrapes[query] = False
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {"message": f"Scrape iniciado para '{query}'", "query": query}
+
+
+@app.get("/api/scrape/status")
+def scrape_status():
+    """Ver qué scrapes están en curso."""
+    return {"active": [q for q, running in _active_scrapes.items() if running]}
 
 
 @app.get("/api/stats")
