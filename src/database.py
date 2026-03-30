@@ -73,59 +73,61 @@ def upsert_item(item, query):
         query: string de búsqueda que encontró este item
     """
     conn = get_connection()
-    now = datetime.now().isoformat()
-    price = parse_price(item.get('price', ''))
+    try:
+        now = datetime.now().isoformat()
+        price = parse_price(item.get('price', ''))
 
-    existing = conn.execute(
-        "SELECT id, price, price_history FROM items WHERE wallapop_url = ?",
-        (item['url'],)
-    ).fetchone()
+        existing = conn.execute(
+            "SELECT id, price, price_history FROM items WHERE wallapop_url = ?",
+            (item['url'],)
+        ).fetchone()
 
-    if existing:
-        history = json.loads(existing['price_history'])
-        old_price = existing['price']
+        if existing:
+            history = json.loads(existing['price_history'])
+            old_price = existing['price']
 
-        # Si el precio cambió, añadir al historial
-        if price is not None and old_price != price:
-            history.append({"price": price, "date": now})
-            logging.info(f"Precio actualizado: {old_price} -> {price} | {item.get('title', '')[:40]}")
+            # Si el precio cambió, añadir al historial
+            if price is not None and old_price != price:
+                history.append({"price": price, "date": now})
+                logging.info(f"Precio actualizado: {old_price} -> {price} | {item.get('title', '')[:40]}")
 
-        conn.execute("""
-            UPDATE items SET
-                title = ?, price = ?, description = ?, location = ?,
-                last_seen = ?, price_history = ?
-            WHERE id = ?
-        """, (
-            item.get('title', 'No disponible'),
-            price,
-            item.get('description', 'No disponible'),
-            item.get('location', 'No disponible'),
-            now,
-            json.dumps(history),
-            existing['id']
-        ))
-    else:
-        initial_history = []
-        if price is not None:
-            initial_history.append({"price": price, "date": now})
+            conn.execute("""
+                UPDATE items SET
+                    title = ?, price = ?, description = ?, location = ?,
+                    last_seen = ?, price_history = ?
+                WHERE id = ?
+            """, (
+                item.get('title', 'No disponible'),
+                price,
+                item.get('description', 'No disponible'),
+                item.get('location', 'No disponible'),
+                now,
+                json.dumps(history),
+                existing['id']
+            ))
+        else:
+            initial_history = []
+            if price is not None:
+                initial_history.append({"price": price, "date": now})
 
-        conn.execute("""
-            INSERT INTO items (wallapop_url, title, price, description, location,
-                               query, first_seen, last_seen, price_history)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            item['url'],
-            item.get('title', 'No disponible'),
-            price,
-            item.get('description', 'No disponible'),
-            item.get('location', 'No disponible'),
-            query,
-            now, now,
-            json.dumps(initial_history)
-        ))
+            conn.execute("""
+                INSERT INTO items (wallapop_url, title, price, description, location,
+                                   query, first_seen, last_seen, price_history)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                item['url'],
+                item.get('title', 'No disponible'),
+                price,
+                item.get('description', 'No disponible'),
+                item.get('location', 'No disponible'),
+                query,
+                now, now,
+                json.dumps(initial_history)
+            ))
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def save_items_to_db(items, query):

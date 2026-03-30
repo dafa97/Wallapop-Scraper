@@ -13,6 +13,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 
 from src.scraper import WallapopScraper
+import src.events as ev
 
 logger = logging.getLogger(__name__)
 
@@ -39,11 +40,15 @@ def _load_searches(path=SEARCHES_FILE):
 
 def _run_single_search(query, max_items=None):
     """Ejecuta un scrape individual en modo headless."""
-    scraper = WallapopScraper(headless=True)
+    ev.start_scrape(query)
     try:
+        scraper = WallapopScraper(headless=True, on_progress=ev.make_callback(query))
         scraper.run(query, max_items=max_items)
     except Exception as e:
         logger.error("Error ejecutando scrape para '%s': %s", query, e)
+        ev.finish_scrape(query, {'type': 'error', 'message': str(e)})
+    finally:
+        ev.finish_scrape(query)
 
 
 class Scheduler:

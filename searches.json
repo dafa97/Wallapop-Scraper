@@ -1,6 +1,16 @@
 {
   "searches": [
-    {"query": "MacBook M2", "interval_minutes": 60},
-    {"query": "iPhone 15", "interval_minutes": 120}
+    {
+      "query": "Behringer XR18",
+      "interval_minutes": 30
+    },
+    {
+      "query": "Korg Nano",
+      "interval_minutes": 30
+    },
+    {
+      "query": "Teenage engineering",
+      "interval_minutes": 30
+    }
   ]
 }

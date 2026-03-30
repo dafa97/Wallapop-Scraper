@@ -40,8 +40,8 @@ class HomePage(BasePage):
             if accepted:
                 self.logger.info("[OK] Cookies aceptadas")
                 return True
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.warning(f"[!] Error aceptando cookies: {e}")
         self.logger.warning("[!] No se encontró botón de cookies")
         return False
 

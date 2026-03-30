@@ -1,15 +1,17 @@
+import asyncio
 import json
 import os
 import logging
 import threading
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 
 from src.database import get_items, get_item_by_id, get_stats, get_opportunities
 from src.scraper import WallapopScraper
+import src.events as ev
 
 app = FastAPI(title="Wallapop Scraper API")
 
@@ -64,8 +66,7 @@ class ScrapeRequest(BaseModel):
     max_items: Optional[int] = None
 
 
-# Track de scrapes en curso
-_active_scrapes: dict[str, bool] = {}
+# _active_scrapes y _scrape_events ahora viven en src.events
 
 
 # --- Endpoints ---
@@ -141,27 +142,66 @@ def force_scrape(req: ScrapeRequest):
     if not query:
         raise HTTPException(status_code=400, detail="Query vacía")
 
-    if _active_scrapes.get(query):
+    if query in ev.active_scrapes():
         raise HTTPException(status_code=409, detail=f"Ya hay un scrape en curso para '{query}'")
 
+    ev.start_scrape(query)
+
     def _run():
-        _active_scrapes[query] = True
         try:
-            scraper = WallapopScraper(headless=True)
+            scraper = WallapopScraper(headless=True, on_progress=ev.make_callback(query))
             scraper.run(query, max_items=req.max_items)
         except Exception as e:
             logging.error(f"Error en scrape forzado '{query}': {e}")
+            ev.finish_scrape(query, {'type': 'error', 'message': str(e)})
         finally:
-            _active_scrapes[query] = False
+            ev.finish_scrape(query)
 
     threading.Thread(target=_run, daemon=True).start()
     return {"message": f"Scrape iniciado para '{query}'", "query": query}
 
 
+@app.get("/api/scrape/live")
+async def scrape_live(query: str = Query(..., description="Query del scrape a seguir")):
+    """Stream SSE con eventos en tiempo real del scrape."""
+    if ev.get_events(query) is None:
+        raise HTTPException(status_code=404, detail="No hay scrape reciente para esa query")
+
+    async def event_stream():
+        idx = 0
+        idle_ticks = 0
+        while True:
+            new_events = ev.get_events_from(query, idx)
+            for event in new_events:
+                yield f"data: {json.dumps(event)}\n\n"
+            idx += len(new_events)
+            if new_events:
+                idle_ticks = 0
+            if ev.is_done(query) and not new_events:
+                break
+            yield ": heartbeat\n\n"
+            await asyncio.sleep(0.4)
+            idle_ticks += 1
+            if idle_ticks > 3000:  # 20 min timeout
+                break
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.get("/api/scrape/recent")
+def scrape_recent():
+    """Lista de scrapes activos y recientes con su estado."""
+    return ev.recent_scrapes()
+
+
 @app.get("/api/scrape/status")
 def scrape_status():
     """Ver qué scrapes están en curso."""
-    return {"active": [q for q, running in _active_scrapes.items() if running]}
+    return {"active": ev.active_scrapes()}
 
 
 @app.get("/api/opportunities")

@@ -606,6 +606,136 @@
       min-width: 150px;
     }
 
+    /* Live view */
+    .live-status-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+    }
+
+    .live-status-text {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+    }
+
+    .live-status-text.active {
+      color: var(--text-primary);
+    }
+
+    .live-pulse {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--highlight);
+      animation: pulse 1.2s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    .live-pulse.done {
+      background: var(--green);
+      animation: none;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.75); }
+    }
+
+    .progress-bar {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+      margin: 0.5rem 0;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--highlight);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    .progress-label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      text-align: right;
+    }
+
+    .live-feed {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+
+    .live-item-card {
+      background: rgba(255, 255, 255, 0.04);
+      border-left: 3px solid var(--highlight);
+      border-radius: 0 8px 8px 0;
+      padding: 0.6rem 0.9rem;
+      animation: slideDown 0.25s ease;
+    }
+
+    @keyframes slideDown {
+      from { transform: translateY(-8px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .live-item-title {
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .live-item-title a {
+      color: var(--text-primary);
+      text-decoration: none;
+    }
+
+    .live-item-title a:hover {
+      color: var(--highlight);
+    }
+
+    .live-item-meta {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.2rem;
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+
+    .live-idle {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-secondary);
+    }
+
+    .live-idle svg {
+      width: 48px;
+      height: 48px;
+      fill: var(--text-secondary);
+      opacity: 0.3;
+      margin-bottom: 1rem;
+    }
+
+    .tab-btn[data-tab="live-tab"].has-activity::after {
+      content: '';
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      background: var(--highlight);
+      border-radius: 50%;
+      margin-left: 6px;
+      vertical-align: middle;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+
     /* Scrollbar */
     ::-webkit-scrollbar {
       width: 8px;
@@ -714,6 +844,7 @@
       <div class="tabs">
         <button class="tab-btn active" data-tab="items-tab">Items</button>
         <button class="tab-btn" data-tab="opportunities-tab">Oportunidades</button>
+        <button class="tab-btn" data-tab="live-tab">En Vivo</button>
       </div>
 
       <!-- Tab: Items -->
@@ -820,6 +951,37 @@
           </div>
         </div>
       </div><!-- end opportunities-tab -->
+
+      <!-- Tab: En Vivo -->
+      <div class="tab-content" id="live-tab">
+        <!-- Selector de scrapes activos / recientes -->
+        <div class="card" id="live-selector-card">
+          <div class="card-title">Scrapes en curso</div>
+          <div id="live-selector-loading" class="loading" style="display:none;"><span class="spinner"></span> Comprobando...</div>
+          <div id="live-selector-idle" class="live-idle" style="display:none;">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+            <p>No hay ningún scrape activo ahora mismo</p>
+            <p style="font-size:0.8rem;margin-top:0.5rem;">Pulsa ▶ en una búsqueda del sidebar para lanzar uno</p>
+          </div>
+          <ul class="search-list" id="live-selector-list"></ul>
+        </div>
+        <!-- Vista del scrape seleccionado -->
+        <div id="live-active" style="display:none;">
+          <div class="card">
+            <div class="live-status-header">
+              <span class="live-pulse" id="live-pulse"></span>
+              <span class="query-badge" id="live-query-label">--</span>
+              <span class="live-status-text" id="live-status-text">Iniciando...</span>
+              <button class="btn btn-secondary" id="btn-live-back" style="margin-left:auto;font-size:0.8rem;padding:0.3rem 0.7rem;">← Volver</button>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" id="live-progress-fill"></div>
+            </div>
+            <div class="progress-label" id="live-progress-label"></div>
+            <div class="live-feed" id="live-feed"></div>
+          </div>
+        </div>
+      </div><!-- end live-tab -->
 
     </main>
   </div>
@@ -988,9 +1150,182 @@
           body: JSON.stringify({ query })
         });
         showToast(`Scrape iniciado para "${query}"`);
+        startLiveView(query);
       } catch (e) {
         showToast('Error al forzar scrape: ' + e.message, 'error');
       }
+    }
+
+    // ========== En Vivo ==========
+    let liveEventSource = null;
+    let liveSelectorInterval = null;
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+      if (btn) btn.classList.add('active');
+      const content = document.getElementById(tabId);
+      if (content) content.classList.add('active');
+      if (tabId === 'live-tab') {
+        loadLiveSelector();
+        if (!liveSelectorInterval) {
+          liveSelectorInterval = setInterval(loadLiveSelector, 5000);
+        }
+      } else {
+        clearInterval(liveSelectorInterval);
+        liveSelectorInterval = null;
+      }
+    }
+
+    async function loadLiveSelector() {
+      try {
+        const scrapes = await apiFetch('/api/scrape/recent');
+        const active = scrapes.filter(s => s.active);
+        const list = document.getElementById('live-selector-list');
+        const idle = document.getElementById('live-selector-idle');
+
+        if (active.length === 0) {
+          list.innerHTML = '';
+          idle.style.display = '';
+        } else {
+          idle.style.display = 'none';
+          // Actualizar solo si cambia para no parpadear
+          const currentQueries = [...list.querySelectorAll('[data-query]')].map(el => el.dataset.query);
+          const newQueries = active.map(s => s.query);
+          if (JSON.stringify(currentQueries) !== JSON.stringify(newQueries)) {
+            list.innerHTML = '';
+            active.forEach(s => {
+              const li = document.createElement('li');
+              li.className = 'search-item';
+              li.dataset.query = s.query;
+              li.innerHTML = `
+                <div class="search-item-info">
+                  <span class="search-item-query">${escapeHtml(s.query)}</span>
+                  <span class="search-item-interval" style="color:var(--green);">&#9679; En curso</span>
+                </div>
+                <button class="btn btn-scrape">Ver en vivo</button>
+              `;
+              li.querySelector('button').addEventListener('click', () => startLiveView(s.query));
+              list.appendChild(li);
+            });
+          }
+        }
+
+        // Indicador en el tab si hay actividad
+        const liveBtn = document.querySelector('.tab-btn[data-tab="live-tab"]');
+        if (active.length > 0) {
+          liveBtn.classList.add('has-activity');
+        } else if (!liveEventSource) {
+          liveBtn.classList.remove('has-activity');
+        }
+      } catch (e) {
+        // silencioso si falla
+      }
+    }
+
+    function startLiveView(query) {
+      switchTab('live-tab');
+
+      document.getElementById('live-selector-card').style.display = 'none';
+      document.getElementById('live-active').style.display = '';
+      document.getElementById('live-query-label').textContent = query;
+      document.getElementById('live-status-text').textContent = 'Conectando...';
+      document.getElementById('live-progress-fill').style.width = '0%';
+      document.getElementById('live-progress-label').textContent = '';
+      document.getElementById('live-feed').innerHTML = '';
+      document.getElementById('live-pulse').className = 'live-pulse';
+
+      document.querySelector('.tab-btn[data-tab="live-tab"]').classList.add('has-activity');
+
+      if (liveEventSource) {
+        liveEventSource.close();
+        liveEventSource = null;
+      }
+
+      liveEventSource = new EventSource(`/api/scrape/live?query=${encodeURIComponent(query)}`);
+
+      liveEventSource.onmessage = (e) => {
+        handleLiveEvent(JSON.parse(e.data));
+      };
+
+      liveEventSource.onerror = () => {
+        document.getElementById('live-status-text').textContent = 'Conexión perdida.';
+        liveEventSource.close();
+        liveEventSource = null;
+        document.querySelector('.tab-btn[data-tab="live-tab"]').classList.remove('has-activity');
+        // Volver al selector tras 2s
+        setTimeout(() => {
+          document.getElementById('live-selector-card').style.display = '';
+          document.getElementById('live-active').style.display = 'none';
+        }, 2000);
+      };
+    }
+
+    function handleLiveEvent(event) {
+      const statusEl = document.getElementById('live-status-text');
+      const fillEl = document.getElementById('live-progress-fill');
+      const labelEl = document.getElementById('live-progress-label');
+
+      switch (event.type) {
+        case 'start':
+          statusEl.textContent = 'Buscando items en Wallapop...';
+          break;
+
+        case 'items_found':
+          statusEl.textContent = `${event.count} items encontrados. Scrapeando detalles...`;
+          labelEl.textContent = `0 / ${event.count}`;
+          break;
+
+        case 'item_scraped': {
+          const pct = event.total > 0 ? Math.round(event.index / event.total * 100) : 0;
+          fillEl.style.width = pct + '%';
+          labelEl.textContent = `${event.index} / ${event.total}`;
+          statusEl.textContent = `Procesando item ${event.index} de ${event.total}...`;
+          addLiveFeedItem(event.item);
+          break;
+        }
+
+        case 'saved':
+          statusEl.textContent = `${event.count} items guardados en base de datos`;
+          break;
+
+        case 'done':
+          fillEl.style.width = '100%';
+          statusEl.textContent = event.saved > 0
+            ? `Completado — ${event.saved} items guardados`
+            : 'Completado';
+          document.getElementById('live-pulse').className = 'live-pulse done';
+          document.querySelector('.tab-btn[data-tab="live-tab"]').classList.remove('has-activity');
+          if (liveEventSource) { liveEventSource.close(); liveEventSource = null; }
+          loadItems();
+          loadStats();
+          break;
+
+        case 'error':
+          statusEl.textContent = `Error: ${event.message}`;
+          document.getElementById('live-pulse').className = 'live-pulse done';
+          document.querySelector('.tab-btn[data-tab="live-tab"]').classList.remove('has-activity');
+          if (liveEventSource) { liveEventSource.close(); liveEventSource = null; }
+          break;
+      }
+    }
+
+    function addLiveFeedItem(item) {
+      const feed = document.getElementById('live-feed');
+      const card = document.createElement('div');
+      card.className = 'live-item-card';
+      const titleHtml = item.url
+        ? `<a href="${escapeHtml(item.url)}" target="_blank" rel="noopener">${escapeHtml(item.title || 'Sin título')}</a>`
+        : escapeHtml(item.title || 'Sin título');
+      card.innerHTML = `
+        <div class="live-item-title">${titleHtml}</div>
+        <div class="live-item-meta">
+          <span class="price">${escapeHtml(item.price || '--')}</span>
+          ${item.location ? `<span>${escapeHtml(item.location)}</span>` : ''}
+        </div>
+      `;
+      feed.insertBefore(card, feed.firstChild);
     }
 
     async function deleteSearch(query) {
@@ -1304,11 +1639,7 @@
     // ========== Tabs ==========
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(btn.dataset.tab).classList.add('active');
-
+        switchTab(btn.dataset.tab);
         if (btn.dataset.tab === 'opportunities-tab') {
           loadOppQueryOptions();
           oppState.currentOffset = 0;
@@ -1373,6 +1704,13 @@
     document.getElementById('btn-opp-next').addEventListener('click', () => {
       oppState.currentOffset += oppState.limit;
       loadOpportunities();
+    });
+
+    document.getElementById('btn-live-back').addEventListener('click', () => {
+      if (liveEventSource) { liveEventSource.close(); liveEventSource = null; }
+      document.getElementById('live-selector-card').style.display = '';
+      document.getElementById('live-active').style.display = 'none';
+      document.querySelector('.tab-btn[data-tab="live-tab"]').classList.remove('has-activity');
     });
 
     // ========== Inicialización ==========

@@ -5,103 +5,58 @@ Convertir el scraper actual (CLI one-shot) en un servicio que corra 24/7 en el s
 
 ---
 
-## Fase 1: Base de datos SQLite
+## Fase 1: Base de datos SQLite ✅ COMPLETA
 
-Reemplazar la salida CSV por una base de datos persistente.
+- [x] Crear módulo `src/database.py` con sqlite3
+- [x] Tabla `items` con todos los campos planificados (id, wallapop_url, title, price, description, location, query, first_seen, last_seen, price_history)
+- [x] Lógica de upsert: actualiza `last_seen` y añade al historial si el precio cambió
+- [x] `WallapopScraper.run()` guarda en DB + CSV de backup
 
-- [ ] Crear módulo `src/database.py` con SQLAlchemy/sqlite3
-- [ ] Tabla `items`:
-  - `id` (PK autoincrement)
-  - `wallapop_url` (unique)
-  - `title`
-  - `price` (float, parseado del texto)
-  - `description`
-  - `location`
-  - `query` (la búsqueda que lo encontró)
-  - `first_seen` (datetime)
-  - `last_seen` (datetime)
-  - `price_history` (JSON string — lista de `{price, date}`)
-- [ ] Lógica de upsert: si el item (por URL) ya existe, actualizar `last_seen` y añadir al historial si el precio cambió
-- [ ] Adaptar `WallapopScraper.run()` para guardar en DB en vez de CSV
+## Fase 2: Scheduler continuo ✅ COMPLETA
 
-## Fase 2: Scheduler continuo
+- [x] `searches.json` con búsquedas configuradas (Behringer XR18, Korg Nano, Teenage engineering — intervalo 30 min)
+- [x] `src/scheduler.py` con clase `Scheduler` que lee `searches.json`, ejecuta por intervalo, recarga config cada 5 min
+- [x] Driver en modo headless (`WallapopScraper(headless=True)`)
+- [x] Manejo de errores: loguea y continúa con la siguiente búsqueda
 
-Ejecutar scrapes periódicamente para una lista configurable de búsquedas.
+## Fase 3: API REST con FastAPI ✅ COMPLETA
 
-- [ ] Crear `searches.json` con la lista de búsquedas:
-  ```json
-  {
-    "searches": [
-      {"query": "MacBook M2", "interval_minutes": 60},
-      {"query": "iPhone 15", "interval_minutes": 120}
-    ]
-  }
-  ```
-- [ ] Crear módulo `src/scheduler.py` que:
-  - Lee `searches.json`
-  - Ejecuta cada búsqueda según su intervalo
-  - Gestiona el ciclo de vida del driver (abrir, scrapear N búsquedas, cerrar)
-  - Logging de cada ciclo
-- [ ] Adaptar `init_driver()` para modo headless obligatorio en servidor (sin display)
-- [ ] Manejo de errores robusto: si un scrape falla, loguear y continuar con el siguiente
+- [x] `GET /api/items` — filtros por query, sort, max_price, paginación
+- [x] `GET /api/items/{id}` — detalle + historial de precios
+- [x] `GET /api/searches` — listar búsquedas activas
+- [x] `POST /api/searches` — añadir nueva búsqueda
+- [x] `DELETE /api/searches/{query}` — eliminar búsqueda
+- [x] `GET /api/stats` — resumen (total items, última ejecución, queries)
+- [x] `GET /api/opportunities` — items por debajo del precio promedio de su query (con `discount_pct`)
+- [x] `POST /api/scrape` — forzar scrape inmediato en background
+- [x] `GET /api/scrape/status` — ver scrapes en curso
+- [x] `main_server.py` como entry point que lanza API + scheduler en paralelo
 
-## Fase 3: API REST con FastAPI
+## Fase 4: Docker para CasaOS ✅ COMPLETA
 
-Exponer los datos para consultas.
+- [x] `Dockerfile` con Chrome headless
+- [x] `docker-compose.yml`: volúmenes `./data`, `./logs`, `./searches.json`; puerto `8085:8000`; restart always
+- [x] `requirements.txt` actualizado con fastapi, uvicorn, etc.
 
-- [ ] `pip install fastapi uvicorn`
-- [ ] Crear `src/api.py` con endpoints:
-  - `GET /api/items` — listar items con filtros:
-    - `?query=macbook` (búsqueda en título)
-    - `?sort=price_asc|price_desc|recent`
-    - `?max_price=500`
-    - `?limit=50&offset=0`
-  - `GET /api/items/{id}` — detalle de un item + historial de precios
-  - `GET /api/searches` — listar búsquedas activas
-  - `POST /api/searches` — añadir nueva búsqueda
-  - `DELETE /api/searches/{query}` — eliminar búsqueda
-  - `GET /api/stats` — resumen (total items, última ejecución, etc.)
-- [ ] Crear `main_server.py` como entry point que lanza API + scheduler en paralelo
+## Fase 5: Dashboard web ✅ COMPLETA
 
-## Fase 4: Docker para CasaOS
-
-Empaquetar todo para despliegue sencillo.
-
-- [ ] `Dockerfile`:
-  - Base: `python:3.11-slim`
-  - Instalar Chrome + chromedriver (headless)
-  - Copiar código + instalar dependencias
-  - Exponer puerto 8000
-  - CMD: `python main_server.py`
-- [ ] `docker-compose.yml`:
-  - Servicio `wallapop-scraper`
-  - Volúmenes: `./data:/app/data` (SQLite DB), `./logs:/app/logs`
-  - Puerto: `8000:8000`
-  - Restart: `always`
-- [ ] Actualizar `requirements.txt` con nuevas dependencias
-
-## Fase 5 (opcional): Dashboard web
-
-Frontend mínimo para ver resultados sin usar curl.
-
-- [ ] Página HTML servida por FastAPI (Jinja2 o static)
-- [ ] Vista de items con tabla ordenable
-- [ ] Filtros por búsqueda, rango de precio
-- [ ] Gráfica de historial de precio por item
+- [x] `static/index.html` servido por FastAPI
+- [x] Vista de items con tabla
+- [x] Pestaña de oportunidades (items con descuento respecto al promedio)
 
 ---
 
-## Orden de implementación
+## Pendiente / Ideas futuras
 
-```
-Fase 1 (DB) → Fase 2 (Scheduler) → Fase 3 (API) → Fase 4 (Docker) → Fase 5 (Dashboard)
-```
+- [ ] **Notificaciones**: alertas cuando un precio baje por debajo de un umbral (Telegram bot, etc.)
+- [ ] **Historial de precios visual**: gráfica de precio por item en el dashboard
+- [ ] **Filtros avanzados en UI**: rango de precio, ordenación en el frontend
+- [ ] **Tests**: ninguno configurado aún
+- [ ] **Autenticación**: la API es pública dentro de la red local; considerar si hace falta protegerla
 
-Cada fase es funcional por sí misma. Podemos probar localmente hasta Fase 3 y luego dockerizar.
+## Decisiones tomadas
 
-## Decisiones pendientes
-
-- **Frecuencia de scraping**: ¿Cada cuánto? (propuesta: 60 min por defecto)
-- **Búsquedas iniciales**: ¿Qué productos monitorear?
-- **Dashboard**: ¿Necesario ahora o solo API?
-- **Notificaciones**: ¿Alertas cuando un precio baje? (Telegram bot, email, etc.)
+- **Frecuencia**: 30 min por búsqueda (configurable en `searches.json`)
+- **Búsquedas activas**: Behringer XR18, Korg Nano, Teenage engineering (equipo de música/electrónica)
+- **Puerto en CasaOS**: 8085 (evita conflictos con otros servicios)
+- **Dashboard**: implementado con pestaña de oportunidades

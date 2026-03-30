@@ -12,11 +12,20 @@ from src.pages import HomePage, SearchResultsPage, ItemDetailPage
 class WallapopScraper:
     BATCH_SIZE = 25  # Reiniciar driver cada N items para evitar memory leaks
 
-    def __init__(self, headless=False):
+    def __init__(self, headless=False, on_progress=None):
         self.driver = None
         self.config = Config
         self.timestamp = None
         self.headless = headless
+        self._on_progress = on_progress
+
+    def _emit(self, event):
+        """Emite un evento de progreso al callback si está definido."""
+        if self._on_progress:
+            try:
+                self._on_progress(event)
+            except Exception:
+                pass
 
     def initialize(self, query):
         """Configuración inicial: logging y driver."""
@@ -28,9 +37,15 @@ class WallapopScraper:
         if self.driver:
             try:
                 self.driver.quit()
-            except:
+            except Exception:
                 pass
             self.driver = None
+        # Matar procesos Chrome/chromedriver residuales que no se cerraron
+        try:
+            import subprocess
+            subprocess.run(["pkill", "-f", "chrome"], capture_output=True)
+        except Exception:
+            pass
 
     def _is_driver_alive(self):
         """Verifica si el driver/Chrome sigue respondiendo."""
@@ -76,6 +91,17 @@ class WallapopScraper:
 
             enriched = detail.enrich_item(item)
             full_items.append(enriched)
+            self._emit({
+                'type': 'item_scraped',
+                'index': i + 1,
+                'total': len(items),
+                'item': {
+                    'title': enriched.get('title', ''),
+                    'price': str(enriched.get('price', '')),
+                    'url': enriched.get('url', ''),
+                    'location': enriched.get('location', ''),
+                }
+            })
 
             # Detectar si el enrich falló (el item vuelve sin cambios)
             if enriched.get('description') in [None, 'No disponible', 'pending']:
@@ -104,6 +130,8 @@ class WallapopScraper:
             logging.info(f"SCRAPER WALLAPOP: {query}")
             logging.info("=" * 50)
 
+            self._emit({'type': 'start', 'query': query})
+
             timeout = self.config.TIMEOUT_DEFAULT
 
             # ── Home: cookies + búsqueda ────────────────────
@@ -116,21 +144,31 @@ class WallapopScraper:
             results = SearchResultsPage(self.driver, timeout)
             items = results.extract_items(max_items=max_items)
 
+            if not items:
+                logging.warning("No se encontraron items para la búsqueda.")
+                self._emit({'type': 'done', 'saved': 0})
+                return
+
             logging.info(f"Procesando detalles para {len(items)} items...")
+            self._emit({'type': 'items_found', 'count': len(items)})
 
             # ── Detalle: enriquecer cada item con recuperación ─
             full_items = self._enrich_items_with_recovery(items, timeout)
 
             # ── Guardar en DB ─────────────────────────────────
             save_items_to_db(full_items, query)
+            self._emit({'type': 'saved', 'count': len(full_items)})
 
             # ── Guardar CSV (backup) ──────────────────────────
             filename = f"wallapop_{query.replace(' ', '_')}_detalles_{self.timestamp}.csv"
-            save_to_csv(full_items, filename, self.config.OUTPUT_DIR)
+            if not save_to_csv(full_items, filename, self.config.OUTPUT_DIR):
+                logging.warning("No se pudo guardar el CSV de backup.")
 
             logging.info("Proceso finalizado con éxito.")
+            self._emit({'type': 'done', 'saved': len(full_items)})
 
         except Exception as e:
-            logging.error(f"Error fatal en run: {e}")
+            logging.error(f"Error fatal en run: {e}", exc_info=True)
+            self._emit({'type': 'error', 'message': str(e)})
         finally:
             self.cleanup()

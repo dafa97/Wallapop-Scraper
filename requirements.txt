@@ -3,3 +3,8 @@ undetected-chromedriver
 beautifulsoup4
 fastapi
 uvicorn[standard]
+
+# Testing
+pytest>=8.0
+pytest-mock>=3.12
+httpx>=0.27

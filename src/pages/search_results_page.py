@@ -18,8 +18,8 @@ class SearchResultsPage(BasePage):
     BASE_URL = "https://www.wallapop.com"
 
     # ── Selectores propios de esta página ───────────────────
-    ITEM_CARD = (By.CSS_SELECTOR, "a[class*='item-card_ItemCard']")
-    CARD_CLASS_RE = re.compile(r'item-card_ItemCard')
+    ITEM_CARD = (By.CSS_SELECTOR, "a[href*='/item/']")
+    CARD_HREF_RE = re.compile(r'/item/')
 
     # Patrones de clase para campos dentro del card
     CARD_TITLE_PATTERN = "ItemCard__title"
@@ -85,7 +85,7 @@ class SearchResultsPage(BasePage):
         self._scroll_to_load_all(max_items)
 
         soup = self.get_soup()
-        cards = soup.find_all('a', class_=self.CARD_CLASS_RE)
+        cards = soup.find_all('a', href=self.CARD_HREF_RE)
         self.logger.info(f"Encontrados {len(cards)} items en total.")
 
         for idx, card in enumerate(cards, 1):

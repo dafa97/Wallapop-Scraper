@@ -50,7 +50,7 @@ class ItemDetailPage(BasePage):
             return item
 
         except Exception as e:
-            self.logger.error(f"Error en detalle {item['url']}: {e}")
+            self.logger.error(f"Error en detalle {item['url']}: {e}", exc_info=True)
             return item
 
     def _extract_title(self, soup):
